@@ -26,7 +26,7 @@ export default function App() {
   return (
     <SafeAreaView className="flex-1 bg-background p-5">
       <FlatList
-        ListHeaderComponent={() => (
+        ListHeaderComponent={(
           <>
             <View className="home-header">
               <View className="home-user">
