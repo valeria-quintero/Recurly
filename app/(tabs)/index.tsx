@@ -10,6 +10,7 @@ import {
 import { icons } from "@/constants/icons";
 import images from "@/constants/images";
 import "@/global.css";
+import { posthog, posthogLogger } from "@/lib/posthog";
 import { formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
 import { styled } from "nativewind";
@@ -23,6 +24,18 @@ export default function App() {
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
+
+  const handleSubscriptionPress = (subscriptionId: string) => {
+    const isExpanded = expandedSubscriptionId === subscriptionId;
+    posthog?.capture(
+      isExpanded ? "subscription_collapsed" : "subscription_expanded",
+    );
+    posthogLogger?.info(
+      isExpanded ? "subscription_collapsed" : "subscription_expanded",
+    );
+    setExpandedSubscriptionId(isExpanded ? null : subscriptionId);
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background p-5">
       <FlatList
@@ -78,11 +91,7 @@ export default function App() {
           <SubscriptionCard
             {...item}
             expanded={expandedSubscriptionId === item.id}
-            onPress={() =>
-              setExpandedSubscriptionId((currentId) =>
-                currentId === item.id ? null : item.id,
-              )
-            }
+            onPress={() => handleSubscriptionPress(item.id)}
           />
         )}
         extraData={expandedSubscriptionId}

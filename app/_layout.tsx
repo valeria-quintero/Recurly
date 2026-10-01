@@ -1,16 +1,74 @@
 import "@/global.css";
-import { ClerkProvider, useAuth } from "@clerk/expo";
+import { ClerkProvider, useAuth, useUser } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { Feather } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
-import { SplashScreen, Stack } from "expo-router";
-import { useEffect } from "react";
+import { SplashScreen, Stack, usePathname } from "expo-router";
+import { PostHogProvider, usePostHog } from "posthog-react-native";
+import { useEffect, useRef } from "react";
 import { ActivityIndicator, View } from "react-native";
+
+import { posthog, posthogLogger } from "@/lib/posthog";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
 if (!publishableKey) {
   throw new Error("Add your Clerk Publishable Key to the .env file");
+}
+
+function PostHogIdentity() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
+  const posthog = usePostHog();
+  const identifiedUserId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoaded) {
+      return;
+    }
+
+    if (!isSignedIn || !user) {
+      identifiedUserId.current = null;
+      return;
+    }
+
+    if (identifiedUserId.current === user.id) {
+      return;
+    }
+
+    const email = user.primaryEmailAddress?.emailAddress;
+    const name = user.fullName;
+
+    posthog.identify(user.id, {
+      $set: {
+        ...(email ? { email } : {}),
+        ...(name ? { name } : {}),
+      },
+    });
+    identifiedUserId.current = user.id;
+  }, [isLoaded, isSignedIn, posthog, user]);
+
+  return null;
+}
+
+function PostHogScreenTracking() {
+  const pathname = usePathname();
+  const posthog = usePostHog();
+  const previousScreen = useRef<string | undefined>(undefined);
+  const screenName = pathname.startsWith("/subscriptions/")
+    ? "/subscriptions/[id]"
+    : pathname;
+
+  useEffect(() => {
+    posthog.screen(screenName, {
+      ...(previousScreen.current
+        ? { previous_screen: previousScreen.current }
+        : {}),
+    });
+    previousScreen.current = screenName;
+  }, [posthog, screenName]);
+
+  return null;
 }
 
 function RootNavigator() {
@@ -51,6 +109,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded) {
+      posthogLogger?.info("app_ready");
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
@@ -59,7 +118,15 @@ export default function RootLayout() {
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <RootNavigator />
+      {posthog ? (
+        <PostHogProvider client={posthog}>
+          <PostHogIdentity />
+          <PostHogScreenTracking />
+          <RootNavigator />
+        </PostHogProvider>
+      ) : (
+        <RootNavigator />
+      )}
     </ClerkProvider>
   );
 }
