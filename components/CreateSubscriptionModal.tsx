@@ -1,4 +1,5 @@
 import { icons } from "@/constants/icons";
+import { posthog } from "@/lib/posthog";
 import { clsx } from "clsx";
 import dayjs from "dayjs";
 import { useState } from "react";
@@ -51,8 +52,9 @@ export default function CreateSubscriptionModal({
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [frequency, setFrequency] = useState<Frequency>("Monthly");
-  const [category, setCategory] =
-    useState<(typeof categories)[number]>(categories[0]);
+  const [category, setCategory] = useState<(typeof categories)[number]>(
+    categories[0],
+  );
   const parsedPrice = Number(price);
   const isNameValid = name.trim().length > 0;
   const isPriceValid = Number.isFinite(parsedPrice) && parsedPrice > 0;
@@ -69,7 +71,10 @@ export default function CreateSubscriptionModal({
     if (!isFormValid) return;
 
     const startDate = dayjs();
-    const renewalDate = startDate.add(1, frequency === "Monthly" ? "month" : "year");
+    const renewalDate = startDate.add(
+      1,
+      frequency === "Monthly" ? "month" : "year",
+    );
     const subscription: Subscription = {
       id: `subscription-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name: name.trim(),
@@ -86,6 +91,14 @@ export default function CreateSubscriptionModal({
     };
 
     onCreate(subscription);
+
+    posthog?.capture("subscription_created", {
+      subscriptionName: name.trim(),
+      subscriptionPrice: parsedPrice,
+      subscriptionFrequency: frequency,
+      subscriptionCategory: category,
+    });
+
     resetForm();
     onClose();
   };
