@@ -27,11 +27,16 @@ function PostHogIdentity() {
       return;
     }
 
-    if (!isSignedIn || !user) {
-      identifiedUserId.current = null;
-      if (!isSignedIn) {
+    if (!isSignedIn) {
+      if (identifiedUserId.current !== null) {
         posthog.reset();
       }
+      identifiedUserId.current = null;
+      return;
+    }
+
+    if (!user) {
+      identifiedUserId.current = null;
       return;
     }
 
