@@ -1,3 +1,4 @@
+import { posthog, posthogLogger } from "@/lib/posthog";
 import { useClerk, useUser } from "@clerk/expo";
 import { styled } from "nativewind";
 import { useState } from "react";
@@ -19,8 +20,11 @@ const Settings = () => {
         style: "destructive",
         onPress: async () => {
           setIsSigningOut(true);
+          posthog?.capture("sign_out_requested");
+          posthogLogger?.info("sign_out_requested");
           try {
             await signOut();
+            posthog?.reset();
           } catch {
             setIsSigningOut(false);
             Alert.alert("Unable to sign out", "Please try again.");

@@ -6,6 +6,7 @@ import {
     AuthSwitch,
     getAuthErrorMessage,
 } from "@/components/AuthUI";
+import { posthog } from "@/lib/posthog";
 import { useSignUp } from "@clerk/expo";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -98,7 +99,11 @@ export default function SignUp() {
     }
 
     const { error: finalizeError } = await signUp.finalize();
-    if (finalizeError) setFormError(getAuthErrorMessage(finalizeError));
+    if (finalizeError) {
+      setFormError(getAuthErrorMessage(finalizeError));
+      return;
+    }
+    posthog?.capture("account_created");
   };
 
   const handleResendCode = async () => {

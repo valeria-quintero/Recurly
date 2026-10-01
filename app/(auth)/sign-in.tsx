@@ -1,11 +1,12 @@
 import {
-    AuthButton,
-    AuthField,
-    AuthLayout,
-    AuthNotice,
-    AuthSwitch,
-    getAuthErrorMessage,
+  AuthButton,
+  AuthField,
+  AuthLayout,
+  AuthNotice,
+  AuthSwitch,
+  getAuthErrorMessage,
 } from "@/components/AuthUI";
+import { posthog } from "@/lib/posthog";
 import { useSignIn } from "@clerk/expo";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -51,7 +52,11 @@ export default function SignIn() {
 
   const finishSignIn = async () => {
     const { error } = await signIn.finalize();
-    if (error) setFormError(getAuthErrorMessage(error));
+    if (error) {
+      setFormError(getAuthErrorMessage(error));
+      return false;
+    }
+    return true;
   };
 
   const startVerification = async () => {
@@ -143,7 +148,7 @@ export default function SignIn() {
     }
 
     if (signIn.status === "complete") {
-      await finishSignIn();
+      if (await finishSignIn()) posthog?.capture("sign_in_completed");
       return;
     }
 
@@ -176,8 +181,9 @@ export default function SignIn() {
       setFormError(getAuthErrorMessage(error));
       return;
     }
-    if (signIn.status === "complete") await finishSignIn();
-    else
+    if (signIn.status === "complete") {
+      if (await finishSignIn()) posthog?.capture("sign_in_completed");
+    } else
       setFormError("That code couldn't be verified. Check it and try again.");
   };
 
@@ -265,7 +271,7 @@ export default function SignIn() {
       setFormError(getAuthErrorMessage(error));
       return;
     }
-    await finishSignIn();
+    if (await finishSignIn()) posthog?.capture("password_reset_completed");
   };
 
   const handleBackToSignIn = async () => {
@@ -299,12 +305,14 @@ export default function SignIn() {
         : isCodeStep
           ? step === "reset-code"
             ? `Enter the reset code sent to ${normalizedEmail}.`
-            : verificationMethod === "mfa-totp"
-              ? "Enter the code from your authenticator app."
-              : verificationMethod === "device-phone" ||
-                  verificationMethod === "mfa-phone"
-                ? "Enter the code sent to your phone."
-                : `Enter the code sent to ${normalizedEmail}.`
+            : step === "mfa" && useBackupCode
+              ? "Enter one of your backup codes."
+              : verificationMethod === "mfa-totp"
+                ? "Enter the code from your authenticator app."
+                : verificationMethod === "device-phone" ||
+                    verificationMethod === "mfa-phone"
+                  ? "Enter the code sent to your phone."
+                  : `Enter the code sent to ${normalizedEmail}.`
           : "Sign in to continue managing your subscriptions.";
 
   return (
