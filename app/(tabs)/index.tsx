@@ -4,7 +4,6 @@ import SubscriptionCard from "@/components/SubscriptionCard";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import {
   HOME_BALANCE,
-  HOME_SUBSCRIPTIONS,
   HOME_USER,
   UPCOMING_SUBSCRIPTIONS,
 } from "@/constants/data";
@@ -12,6 +11,7 @@ import { icons } from "@/constants/icons";
 import images from "@/constants/images";
 import "@/global.css";
 import { posthog, posthogLogger } from "@/lib/posthog";
+import { addSubscription, useSubscriptions } from "@/lib/subscriptions";
 import { formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
 import { styled } from "nativewind";
@@ -25,7 +25,7 @@ export default function App() {
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
-  const [subscriptions, setSubscriptions] = useState(HOME_SUBSCRIPTIONS);
+  const subscriptions = useSubscriptions();
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
 
   const handleSubscriptionPress = (subscriptionId: string) => {
@@ -113,12 +113,7 @@ export default function App() {
       />
       <CreateSubscriptionModal
         onClose={() => setIsCreateModalVisible(false)}
-        onCreate={(subscription) =>
-          setSubscriptions((currentSubscriptions) => [
-            subscription,
-            ...currentSubscriptions,
-          ])
-        }
+        onCreate={addSubscription}
         visible={isCreateModalVisible}
       />
     </SafeAreaView>

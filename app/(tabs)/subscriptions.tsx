@@ -3,18 +3,19 @@ import React, { useState } from "react";
 import { FlatList, Text, TextInput, View } from "react-native";
 
 import SubscriptionCard from "@/components/SubscriptionCard";
-import { HOME_SUBSCRIPTIONS } from "@/constants/data";
+import { useSubscriptions } from "@/lib/subscriptions";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
 const Subscriptions = () => {
+  const subscriptions = useSubscriptions();
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     string | null
   >(null);
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
-  const filteredSubscriptions = HOME_SUBSCRIPTIONS.filter((subscription) =>
+  const filteredSubscriptions = subscriptions.filter((subscription) =>
     [
       subscription.name,
       subscription.category,
