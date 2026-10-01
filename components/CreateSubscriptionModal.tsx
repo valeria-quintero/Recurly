@@ -41,7 +41,7 @@ type Frequency = "Monthly" | "Yearly";
 type CreateSubscriptionModalProps = {
   visible: boolean;
   onClose: () => void;
-  onCreate: (subscription: Subscription) => void;
+  onCreate: (subscription: Subscription) => Promise<void>;
 };
 
 export default function CreateSubscriptionModal({
@@ -55,6 +55,8 @@ export default function CreateSubscriptionModal({
   const [category, setCategory] = useState<(typeof categories)[number]>(
     categories[0],
   );
+  const [creationError, setCreationError] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const parsedPrice = Number(price);
   const isNameValid = name.trim().length > 0;
   const isPriceValid = Number.isFinite(parsedPrice) && parsedPrice > 0;
@@ -65,10 +67,11 @@ export default function CreateSubscriptionModal({
     setPrice("");
     setFrequency("Monthly");
     setCategory(categories[0]);
+    setCreationError(null);
   };
 
-  const handleCreate = () => {
-    if (!isFormValid) return;
+  const handleCreate = async () => {
+    if (!isFormValid || isCreating) return;
 
     const startDate = dayjs();
     const renewalDate = startDate.add(
@@ -90,7 +93,15 @@ export default function CreateSubscriptionModal({
       color: categoryColors[category],
     };
 
-    onCreate(subscription);
+    setIsCreating(true);
+    setCreationError(null);
+    try {
+      await onCreate(subscription);
+    } catch {
+      setCreationError("Could not save the subscription. Please try again.");
+      setIsCreating(false);
+      return;
+    }
 
     posthog?.capture("subscription_created", {
       subscriptionName: name.trim(),
@@ -101,6 +112,7 @@ export default function CreateSubscriptionModal({
 
     resetForm();
     onClose();
+    setIsCreating(false);
   };
 
   return (
@@ -229,17 +241,25 @@ export default function CreateSubscriptionModal({
                 </View>
               </View>
 
+              {creationError ? (
+                <Text accessibilityRole="alert" className="auth-error">
+                  {creationError}
+                </Text>
+              ) : null}
+
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ disabled: !isFormValid }}
+                accessibilityState={{ disabled: !isFormValid || isCreating }}
                 className={clsx(
                   "auth-button",
-                  !isFormValid && "auth-button-disabled",
+                  (!isFormValid || isCreating) && "auth-button-disabled",
                 )}
-                disabled={!isFormValid}
+                disabled={!isFormValid || isCreating}
                 onPress={handleCreate}
               >
-                <Text className="auth-button-text">Create Subscription</Text>
+                <Text className="auth-button-text">
+                  {isCreating ? "Saving..." : "Create Subscription"}
+                </Text>
               </Pressable>
             </ScrollView>
           </View>

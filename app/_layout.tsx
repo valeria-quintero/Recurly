@@ -29,6 +29,9 @@ function PostHogIdentity() {
 
     if (!isSignedIn || !user) {
       identifiedUserId.current = null;
+      if (!isSignedIn) {
+        posthog.reset();
+      }
       return;
     }
 
@@ -119,7 +122,10 @@ export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       {posthog ? (
-        <PostHogProvider client={posthog}>
+        <PostHogProvider
+          client={posthog}
+          autocapture={{ captureScreens: false }}
+        >
           <PostHogIdentity />
           <PostHogScreenTracking />
           <RootNavigator />
